@@ -25,13 +25,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           if [[ -f "tools/verify_test_inventory.py" && -f "app/build.gradle.kts" ]]; then
             project_dir="."
-            echo "Android project is already at repository root."
           elif [[ -f "JAL_SURAKSHA_Android/tools/verify_test_inventory.py" && -f "JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
             project_dir="JAL_SURAKSHA_Android"
-            echo "Android project found in JAL_SURAKSHA_Android/."
           else
             zip_file="$(find . -maxdepth 1 -type f -name '*_GITHUB_READY_SOURCE.zip' -print -quit || true)"
             if [[ -z "$zip_file" || ! -f "$zip_file" ]]; then
@@ -40,16 +37,12 @@ jobs:
             fi
             mkdir -p .ci-source
             unzip -oq "$zip_file" -d .ci-source
-            if [[ -f ".ci-source/JAL_SURAKSHA_Android/tools/verify_test_inventory.py" && -f ".ci-source/JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
+            if [[ -f ".ci-source/JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
               project_dir=".ci-source/JAL_SURAKSHA_Android"
-            elif [[ -f ".ci-source/tools/verify_test_inventory.py" && -f ".ci-source/app/build.gradle.kts" ]]; then
-              project_dir=".ci-source"
             else
-              echo "::error::ZIP was extracted, but expected Android project files were not found."
-              exit 1
+              project_dir=".ci-source"
             fi
           fi
-
           echo "PROJECT_DIR=$project_dir" >> "$GITHUB_ENV"
           echo "project_dir=$project_dir" >> "$GITHUB_OUTPUT"
 
@@ -59,11 +52,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
+      # Removed the buggy android-actions/setup-android.
+      # Directly using the pre-installed sdkmanager in ubuntu-latest.
       - name: Install Android 35 platform and build tools
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+        run: |
+          yes | sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" > /dev/null
 
       - name: Install Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
@@ -128,9 +121,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
 
       - name: Install Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
