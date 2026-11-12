@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Prepare Android project source
         id: prepare
@@ -33,50 +33,40 @@ jobs:
             project_dir="JAL_SURAKSHA_Android"
             echo "Android project found in JAL_SURAKSHA_Android/."
           else
-            zip_file="JAL_SURAKSHA_Android_v0.2.0_GITHUB_READY_SOURCE.zip"
-
-            if [[ ! -f "$zip_file" ]]; then
-              zip_file="$(find . -maxdepth 1 -type f -name 'JAL_SURAKSHA_Android*_GITHUB_READY_SOURCE.zip' -print -quit || true)"
-            fi
-
+            zip_file="$(find . -maxdepth 1 -type f -name '*_GITHUB_READY_SOURCE.zip' -print -quit || true)"
             if [[ -z "$zip_file" || ! -f "$zip_file" ]]; then
               echo "::error::Android source folder and GitHub-ready source ZIP were not found."
-              ls -la
               exit 1
             fi
-
             mkdir -p .ci-source
             unzip -oq "$zip_file" -d .ci-source
-
             if [[ -f ".ci-source/JAL_SURAKSHA_Android/tools/verify_test_inventory.py" && -f ".ci-source/JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
               project_dir=".ci-source/JAL_SURAKSHA_Android"
             elif [[ -f ".ci-source/tools/verify_test_inventory.py" && -f ".ci-source/app/build.gradle.kts" ]]; then
               project_dir=".ci-source"
             else
               echo "::error::ZIP was extracted, but expected Android project files were not found."
-              find .ci-source -maxdepth 4 -type f | sort | head -250
               exit 1
             fi
           fi
 
           echo "PROJECT_DIR=$project_dir" >> "$GITHUB_ENV"
           echo "project_dir=$project_dir" >> "$GITHUB_OUTPUT"
-          echo "Using Android project directory: $project_dir"
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v3
 
       - name: Install Android 35 platform and build tools
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
       - name: Install Gradle 8.9
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
           validate-wrappers: false
@@ -95,14 +85,12 @@ jobs:
 
       - name: Upload JVM test and lint reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: android-unit-and-lint-reports
           path: |
-            ${{ steps.prepare.outputs.project_dir }}/app/build/reports/tests/testDebugUnitTest/
-            ${{ steps.prepare.outputs.project_dir }}/app/build/reports/lint-results-debug.html
-            ${{ steps.prepare.outputs.project_dir }}/app/build/reports/lint-results-debug.xml
-            ${{ steps.prepare.outputs.project_dir }}/app/build/test-results/testDebugUnitTest/
+            ${{ steps.prepare.outputs.project_dir }}/app/build/reports/
+            ${{ steps.prepare.outputs.project_dir }}/app/build/test-results/
           if-no-files-found: warn
           retention-days: 14
 
@@ -111,74 +99,56 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Prepare Android project source
         id: prepare
         shell: bash
         run: |
           set -euo pipefail
-
           if [[ -f "tools/verify_test_inventory.py" && -f "app/build.gradle.kts" ]]; then
             project_dir="."
           elif [[ -f "JAL_SURAKSHA_Android/tools/verify_test_inventory.py" && -f "JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
             project_dir="JAL_SURAKSHA_Android"
           else
-            zip_file="JAL_SURAKSHA_Android_v0.2.0_GITHUB_READY_SOURCE.zip"
-
-            if [[ ! -f "$zip_file" ]]; then
-              zip_file="$(find . -maxdepth 1 -type f -name 'JAL_SURAKSHA_Android*_GITHUB_READY_SOURCE.zip' -print -quit || true)"
-            fi
-
-            if [[ -z "$zip_file" || ! -f "$zip_file" ]]; then
-              echo "::error::Android project source ZIP/folder was not found."
-              ls -la
-              exit 1
-            fi
-
+            zip_file="$(find . -maxdepth 1 -type f -name '*_GITHUB_READY_SOURCE.zip' -print -quit || true)"
+            if [[ -z "$zip_file" ]]; then exit 1; fi
             mkdir -p .ci-source
             unzip -oq "$zip_file" -d .ci-source
-
             if [[ -f ".ci-source/JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
               project_dir=".ci-source/JAL_SURAKSHA_Android"
-            elif [[ -f ".ci-source/app/build.gradle.kts" ]]; then
-              project_dir=".ci-source"
             else
-              echo "::error::Android Gradle project was not found after extraction."
-              find .ci-source -maxdepth 4 -type f | sort | head -250
-              exit 1
+              project_dir=".ci-source"
             fi
           fi
-
-          echo "PROJECT_DIR=$project_dir" >> "$GITHUB_ENV"
           echo "project_dir=$project_dir" >> "$GITHUB_OUTPUT"
-          echo "Using Android project directory: $project_dir"
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Install Gradle 8.9
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
           validate-wrappers: false
 
-      # Required so the emulator can use KVM instead of slow software virtualization.
       - name: Enable KVM group permissions
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-          ls -l /dev/kvm
 
       - name: Run instrumented UI tests
-        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 35
-          target: google_apis
+          target: aosp_atd 
           arch: x86_64
           profile: pixel_2
           working-directory: ${{ steps.prepare.outputs.project_dir }}
@@ -187,17 +157,15 @@ jobs:
           script: |
             set -euo pipefail
             echo "Gradle project directory: $PWD"
-            test -f settings.gradle.kts -o -f settings.gradle
             gradle --no-daemon --stacktrace connectedDebugAndroidTest
 
       - name: Upload instrumented test reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: android-instrumented-test-reports
           path: |
-            ${{ steps.prepare.outputs.project_dir }}/app/build/reports/androidTests/connected/
-            ${{ steps.prepare.outputs.project_dir }}/app/build/outputs/androidTest-results/connected/
+            ${{ steps.prepare.outputs.project_dir }}/app/build/reports/androidTests/
+            ${{ steps.prepare.outputs.project_dir }}/app/build/outputs/androidTest-results/
           if-no-files-found: warn
           retention-days: 14
-          
