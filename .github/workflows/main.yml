@@ -54,6 +54,11 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The action's default includes the removed legacy "tools" package.
+          # Install only platform-tools here; platform/build-tools are pinned below.
+          packages: 'platform-tools'
+          accept-android-sdk-licenses: true
 
       - name: Install Android 35 platform and build tools
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
