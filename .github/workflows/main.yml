@@ -1,0 +1,102 @@
+name: JAL-SURAKSHA Main Verification
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-lint-build:
+    name: Unit tests, static checks, lint and debug compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android 35 platform and build tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Install Gradle 8.9
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+          validate-wrappers: false
+
+      - name: Verify test inventory
+        run: python3 tools/verify_test_inventory.py
+
+      - name: Run offline Kotlin/XML structural checks
+        run: python3 tools/lint_kt.py .
+
+      - name: Compile, run JVM tests, and run Android lint
+        run: gradle --no-daemon --stacktrace clean testDebugUnitTest lintDebug compileDebugKotlin
+
+      - name: Upload JVM test and lint reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-unit-and-lint-reports
+          path: |
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.xml
+            app/build/test-results/testDebugUnitTest/
+          if-no-files-found: warn
+          retention-days: 14
+
+  compose-ui-tests:
+    name: Compose UI tests on Android emulator
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Gradle 8.9
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+          validate-wrappers: false
+
+      - name: Run instrumented UI tests
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: gradle --no-daemon --stacktrace connectedDebugAndroidTest
+
+      - name: Upload instrumented test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-instrumented-test-reports
+          path: |
+            app/build/reports/androidTests/connected/
+            app/build/outputs/androidTest-results/connected/
+          if-no-files-found: warn
+          retention-days: 14
+          
