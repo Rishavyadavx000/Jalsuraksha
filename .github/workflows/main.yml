@@ -52,8 +52,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Removed the buggy android-actions/setup-android.
-      # Directly using the pre-installed sdkmanager in ubuntu-latest.
       - name: Install Android 35 platform and build tools
         run: |
           yes | sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" > /dev/null
@@ -105,7 +103,10 @@ jobs:
             project_dir="JAL_SURAKSHA_Android"
           else
             zip_file="$(find . -maxdepth 1 -type f -name '*_GITHUB_READY_SOURCE.zip' -print -quit || true)"
-            if [[ -z "$zip_file" ]]; then exit 1; fi
+            if [[ -z "$zip_file" ]]; then
+              echo "::error::GitHub-ready Android source ZIP was not found."
+              exit 1
+            fi
             mkdir -p .ci-source
             unzip -oq "$zip_file" -d .ci-source
             if [[ -f ".ci-source/JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
@@ -115,6 +116,25 @@ jobs:
             fi
           fi
           echo "project_dir=$project_dir" >> "$GITHUB_OUTPUT"
+
+      - name: Apply Compose UI test import fix
+        shell: bash
+        env:
+          PROJECT_DIR: ${{ steps.prepare.outputs.project_dir }}
+        run: |
+          set -euo pipefail
+          source_file=".github/ci-overrides/PumpPanelTest.kt"
+          target_file="$PROJECT_DIR/app/src/androidTest/java/com/jalsuraksha/app/PumpPanelTest.kt"
+          test -f "$source_file"
+          test -f "$PROJECT_DIR/app/build.gradle.kts"
+          mkdir -p "$(dirname "$target_file")"
+          cp "$source_file" "$target_file"
+          if grep -q '^import androidx.compose.ui.test.assertExists$' "$target_file"; then
+            echo "::error::Invalid Compose assertExists import remains in UI test source."
+            exit 1
+          fi
+          grep -q 'rule.onNodeWithText("Pump state unknown").assertExists()' "$target_file"
+          echo "Applied corrected PumpPanelTest.kt to $target_file"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -138,7 +158,7 @@ jobs:
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 35
-          target: aosp_atd 
+          target: aosp_atd
           arch: x86_64
           profile: pixel_2
           working-directory: ${{ steps.prepare.outputs.project_dir }}
