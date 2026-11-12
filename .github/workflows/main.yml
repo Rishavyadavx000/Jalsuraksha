@@ -21,6 +21,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Prepare Android project source
+        id: prepare
         shell: bash
         run: |
           set -euo pipefail
@@ -40,8 +41,6 @@ jobs:
 
             if [[ -z "$zip_file" || ! -f "$zip_file" ]]; then
               echo "::error::Android source folder and GitHub-ready source ZIP were not found."
-              echo "Upload the project source folder or the *_GITHUB_READY_SOURCE.zip file to the repository root."
-              echo "Root directory contents:"
               ls -la
               exit 1
             fi
@@ -61,6 +60,7 @@ jobs:
           fi
 
           echo "PROJECT_DIR=$project_dir" >> "$GITHUB_ENV"
+          echo "project_dir=$project_dir" >> "$GITHUB_OUTPUT"
           echo "Using Android project directory: $project_dir"
 
       - name: Set up JDK 17
@@ -82,15 +82,15 @@ jobs:
           validate-wrappers: false
 
       - name: Verify test inventory
-        working-directory: ${{ env.PROJECT_DIR }}
+        working-directory: ${{ steps.prepare.outputs.project_dir }}
         run: python3 tools/verify_test_inventory.py
 
       - name: Run offline Kotlin/XML structural checks
-        working-directory: ${{ env.PROJECT_DIR }}
+        working-directory: ${{ steps.prepare.outputs.project_dir }}
         run: python3 tools/lint_kt.py .
 
       - name: Compile, run JVM tests, and run Android lint
-        working-directory: ${{ env.PROJECT_DIR }}
+        working-directory: ${{ steps.prepare.outputs.project_dir }}
         run: gradle --no-daemon --stacktrace clean testDebugUnitTest lintDebug compileDebugKotlin
 
       - name: Upload JVM test and lint reports
@@ -99,10 +99,10 @@ jobs:
         with:
           name: android-unit-and-lint-reports
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/reports/tests/testDebugUnitTest/
-            ${{ env.PROJECT_DIR }}/app/build/reports/lint-results-debug.html
-            ${{ env.PROJECT_DIR }}/app/build/reports/lint-results-debug.xml
-            ${{ env.PROJECT_DIR }}/app/build/test-results/testDebugUnitTest/
+            ${{ steps.prepare.outputs.project_dir }}/app/build/reports/tests/testDebugUnitTest/
+            ${{ steps.prepare.outputs.project_dir }}/app/build/reports/lint-results-debug.html
+            ${{ steps.prepare.outputs.project_dir }}/app/build/reports/lint-results-debug.xml
+            ${{ steps.prepare.outputs.project_dir }}/app/build/test-results/testDebugUnitTest/
           if-no-files-found: warn
           retention-days: 14
 
@@ -114,6 +114,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Prepare Android project source
+        id: prepare
         shell: bash
         run: |
           set -euo pipefail
@@ -150,6 +151,7 @@ jobs:
           fi
 
           echo "PROJECT_DIR=$project_dir" >> "$GITHUB_ENV"
+          echo "project_dir=$project_dir" >> "$GITHUB_OUTPUT"
           echo "Using Android project directory: $project_dir"
 
       - name: Set up JDK 17
@@ -164,6 +166,14 @@ jobs:
           gradle-version: '8.9'
           validate-wrappers: false
 
+      # Required so the emulator can use KVM instead of slow software virtualization.
+      - name: Enable KVM group permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
       - name: Run instrumented UI tests
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
@@ -171,9 +181,13 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_2
+          working-directory: ${{ steps.prepare.outputs.project_dir }}
           disable-animations: true
+          emulator-boot-timeout: 600
           script: |
-            cd "$GITHUB_WORKSPACE/$PROJECT_DIR"
+            set -euo pipefail
+            echo "Gradle project directory: $PWD"
+            test -f settings.gradle.kts -o -f settings.gradle
             gradle --no-daemon --stacktrace connectedDebugAndroidTest
 
       - name: Upload instrumented test reports
@@ -182,8 +196,8 @@ jobs:
         with:
           name: android-instrumented-test-reports
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/reports/androidTests/connected/
-            ${{ env.PROJECT_DIR }}/app/build/outputs/androidTest-results/connected/
+            ${{ steps.prepare.outputs.project_dir }}/app/build/reports/androidTests/connected/
+            ${{ steps.prepare.outputs.project_dir }}/app/build/outputs/androidTest-results/connected/
           if-no-files-found: warn
           retention-days: 14
           
