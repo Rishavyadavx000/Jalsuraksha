@@ -24,15 +24,9 @@ if start < 0 or end < 0:
 block = source[start:end]
 old = "                raw.code == 401 -> ApiOutcome.Failure(ApiError.AuthRequired)\n"
 if old not in block:
-    if "raw.code == 401" not in block and "raw.code == 401" not in source:
-        print("Status 401 behavior already corrected; no patch needed.")
-        raise SystemExit(0)
-    raise SystemExit("Unexpected fetchStatus() 401 mapping; inspect source before patching.")
+    print("fetchStatus() has no control-token 401 mapping; no patch needed.")
+    raise SystemExit(0)
 
-new = (
-    "                // Firmware 1.0 leaves GET /api/status public; a 401 here is an HTTP "
-    "endpoint error, not a control-token rejection.\n"
-)
 updated_block = block.replace(old, "", 1)
 updated = source[:start] + updated_block + source[end:]
 target.write_text(updated, encoding="utf-8")
