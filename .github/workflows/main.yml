@@ -52,6 +52,21 @@ jobs:
           echo "project_dir=$project_dir" >> "$GITHUB_OUTPUT"
           echo "Using Android project: $project_dir"
 
+      - name: Apply missing dashboard pipeline status component
+        shell: bash
+        env:
+          PROJECT_DIR: ${{ steps.prepare.outputs.project_dir }}
+        run: |
+          set -euo pipefail
+          source_file=".github/ci-overrides/PipelineStatusCard.kt"
+          target_file="$PROJECT_DIR/app/src/main/java/com/jalsuraksha/app/ui/screens/PipelineStatusCard.kt"
+          test -s "$source_file"
+          test -s "$PROJECT_DIR/app/src/main/java/com/jalsuraksha/app/ui/screens/HomeScreen.kt"
+          mkdir -p "$(dirname "$target_file")"
+          cp "$source_file" "$target_file"
+          grep -q 'internal fun PipelineStatusCard(ui: UiSnapshot)' "$target_file"
+          echo "Applied PipelineStatusCard.kt to $target_file"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -135,6 +150,21 @@ jobs:
           fi
           echo "project_dir=$project_dir" >> "$GITHUB_OUTPUT"
           echo "Using Android project: $project_dir"
+
+      - name: Apply missing dashboard pipeline status component
+        shell: bash
+        env:
+          PROJECT_DIR: ${{ steps.prepare.outputs.project_dir }}
+        run: |
+          set -euo pipefail
+          source_file=".github/ci-overrides/PipelineStatusCard.kt"
+          target_file="$PROJECT_DIR/app/src/main/java/com/jalsuraksha/app/ui/screens/PipelineStatusCard.kt"
+          test -s "$source_file"
+          test -s "$PROJECT_DIR/app/src/main/java/com/jalsuraksha/app/ui/screens/HomeScreen.kt"
+          mkdir -p "$(dirname "$target_file")"
+          cp "$source_file" "$target_file"
+          grep -q 'internal fun PipelineStatusCard(ui: UiSnapshot)' "$target_file"
+          echo "Applied PipelineStatusCard.kt to $target_file"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -221,6 +251,21 @@ jobs:
           fi
           echo "project_dir=$project_dir" >> "$GITHUB_OUTPUT"
           echo "Using Android project: $project_dir"
+
+      - name: Apply missing dashboard pipeline status component
+        shell: bash
+        env:
+          PROJECT_DIR: ${{ steps.prepare.outputs.project_dir }}
+        run: |
+          set -euo pipefail
+          source_file=".github/ci-overrides/PipelineStatusCard.kt"
+          target_file="$PROJECT_DIR/app/src/main/java/com/jalsuraksha/app/ui/screens/PipelineStatusCard.kt"
+          test -s "$source_file"
+          test -s "$PROJECT_DIR/app/src/main/java/com/jalsuraksha/app/ui/screens/HomeScreen.kt"
+          mkdir -p "$(dirname "$target_file")"
+          cp "$source_file" "$target_file"
+          grep -q 'internal fun PipelineStatusCard(ui: UiSnapshot)' "$target_file"
+          echo "Applied PipelineStatusCard.kt to $target_file"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
