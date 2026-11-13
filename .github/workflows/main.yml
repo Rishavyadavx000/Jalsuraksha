@@ -66,6 +66,7 @@ jobs:
           cp "$source_file" "$target_file"
           grep -q 'internal fun PipelineStatusCard(ui: UiSnapshot)' "$target_file"
           echo "Applied PipelineStatusCard.kt to $target_file"
+          python3 .github/ci-overrides/patch_status_http401.py "$PROJECT_DIR"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -165,6 +166,7 @@ jobs:
           cp "$source_file" "$target_file"
           grep -q 'internal fun PipelineStatusCard(ui: UiSnapshot)' "$target_file"
           echo "Applied PipelineStatusCard.kt to $target_file"
+          python3 .github/ci-overrides/patch_status_http401.py "$PROJECT_DIR"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -266,6 +268,7 @@ jobs:
           cp "$source_file" "$target_file"
           grep -q 'internal fun PipelineStatusCard(ui: UiSnapshot)' "$target_file"
           echo "Applied PipelineStatusCard.kt to $target_file"
+          python3 .github/ci-overrides/patch_status_http401.py "$PROJECT_DIR"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
