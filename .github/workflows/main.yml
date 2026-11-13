@@ -75,7 +75,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 .github/ci-overrides/apply_launcher_icon.py "$PROJECT_DIR"
-          test -s "$PROJECT_DIR/app/src/main/res/drawable-nodpi/ic_launcher_art.webp"
+          icon_dir="$PROJECT_DIR/app/src/main/res/drawable-nodpi"
+          test -s "$icon_dir/ic_launcher_art.png" || test -s "$icon_dir/ic_launcher_art.webp"
+          if [[ -s "$icon_dir/ic_launcher_art.png" && -s "$icon_dir/ic_launcher_art.webp" ]]; then
+            echo "::error::Duplicate ic_launcher_art drawable resources remain."
+            exit 1
+          fi
           grep -q '<monochrome' "$PROJECT_DIR/app/src/main/res/mipmap-anydpi-v33/ic_launcher.xml"
 
       - name: Set up JDK 17
@@ -185,7 +190,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 .github/ci-overrides/apply_launcher_icon.py "$PROJECT_DIR"
-          test -s "$PROJECT_DIR/app/src/main/res/drawable-nodpi/ic_launcher_art.webp"
+          icon_dir="$PROJECT_DIR/app/src/main/res/drawable-nodpi"
+          test -s "$icon_dir/ic_launcher_art.png" || test -s "$icon_dir/ic_launcher_art.webp"
+          if [[ -s "$icon_dir/ic_launcher_art.png" && -s "$icon_dir/ic_launcher_art.webp" ]]; then
+            echo "::error::Duplicate ic_launcher_art drawable resources remain."
+            exit 1
+          fi
           grep -q '<monochrome' "$PROJECT_DIR/app/src/main/res/mipmap-anydpi-v33/ic_launcher.xml"
 
       - name: Set up JDK 17
@@ -297,7 +307,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 .github/ci-overrides/apply_launcher_icon.py "$PROJECT_DIR"
-          test -s "$PROJECT_DIR/app/src/main/res/drawable-nodpi/ic_launcher_art.webp"
+          icon_dir="$PROJECT_DIR/app/src/main/res/drawable-nodpi"
+          test -s "$icon_dir/ic_launcher_art.png" || test -s "$icon_dir/ic_launcher_art.webp"
+          if [[ -s "$icon_dir/ic_launcher_art.png" && -s "$icon_dir/ic_launcher_art.webp" ]]; then
+            echo "::error::Duplicate ic_launcher_art drawable resources remain."
+            exit 1
+          fi
           grep -q '<monochrome' "$PROJECT_DIR/app/src/main/res/mipmap-anydpi-v33/ic_launcher.xml"
 
       - name: Set up JDK 17
