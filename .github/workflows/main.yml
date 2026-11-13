@@ -1,4 +1,4 @@
-name: JAL-SURAKSHA Main Verification
+name: JAL-SURAKSHA Main Verification and Debug APK
 
 on:
   push:
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   unit-lint-build:
-    name: Unit tests, static checks, lint and debug compile
+    name: JVM tests, structural checks, lint and Kotlin compile
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -30,21 +30,27 @@ jobs:
           elif [[ -f "JAL_SURAKSHA_Android/tools/verify_test_inventory.py" && -f "JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
             project_dir="JAL_SURAKSHA_Android"
           else
-            zip_file="$(find . -maxdepth 1 -type f -name '*_GITHUB_READY_SOURCE.zip' -print -quit || true)"
-            if [[ -z "$zip_file" || ! -f "$zip_file" ]]; then
-              echo "::error::Android source folder and GitHub-ready source ZIP were not found."
+            zip_file="JAL_SURAKSHA_Android_v0.3.0_GITHUB_READY_SOURCE.zip"
+            if [[ ! -f "$zip_file" ]]; then
+              echo "::error::Required v0.3.0 source archive not found: $zip_file"
+              ls -la
               exit 1
             fi
             mkdir -p .ci-source
             unzip -oq "$zip_file" -d .ci-source
             if [[ -f ".ci-source/JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
               project_dir=".ci-source/JAL_SURAKSHA_Android"
-            else
+            elif [[ -f ".ci-source/app/build.gradle.kts" ]]; then
               project_dir=".ci-source"
+            else
+              echo "::error::The source archive does not contain an Android Gradle project."
+              find .ci-source -maxdepth 4 -type f | sort | head -200
+              exit 1
             fi
           fi
           echo "PROJECT_DIR=$project_dir" >> "$GITHUB_ENV"
           echo "project_dir=$project_dir" >> "$GITHUB_OUTPUT"
+          echo "Using Android project: $project_dir"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -55,8 +61,6 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          # The action's default includes the removed legacy "tools" package.
-          # Install only platform-tools here; platform/build-tools are pinned below.
           packages: 'platform-tools'
           accept-android-sdk-licenses: true
 
@@ -69,7 +73,7 @@ jobs:
           gradle-version: '8.9'
           validate-wrappers: false
 
-      - name: Verify test inventory
+      - name: Verify JVM and UI test inventory
         working-directory: ${{ steps.prepare.outputs.project_dir }}
         run: python3 tools/verify_test_inventory.py
 
@@ -77,7 +81,11 @@ jobs:
         working-directory: ${{ steps.prepare.outputs.project_dir }}
         run: python3 tools/lint_kt.py .
 
-      - name: Compile, run JVM tests, and run Android lint
+      - name: Verify ESP32 firmware and Android API contract
+        working-directory: ${{ steps.prepare.outputs.project_dir }}
+        run: python3 tools/verify_firmware_contract.py
+
+      - name: Compile, execute JVM tests, and run Android lint
         working-directory: ${{ steps.prepare.outputs.project_dir }}
         run: gradle --no-daemon --stacktrace clean testDebugUnitTest lintDebug compileDebugKotlin
 
@@ -85,7 +93,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-unit-and-lint-reports
+          name: jal-suraksha-v0.3.0-unit-lint-reports
           path: |
             ${{ steps.prepare.outputs.project_dir }}/app/build/reports/
             ${{ steps.prepare.outputs.project_dir }}/app/build/test-results/
@@ -109,39 +117,24 @@ jobs:
           elif [[ -f "JAL_SURAKSHA_Android/tools/verify_test_inventory.py" && -f "JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
             project_dir="JAL_SURAKSHA_Android"
           else
-            zip_file="$(find . -maxdepth 1 -type f -name '*_GITHUB_READY_SOURCE.zip' -print -quit || true)"
-            if [[ -z "$zip_file" ]]; then
-              echo "::error::GitHub-ready Android source ZIP was not found."
+            zip_file="JAL_SURAKSHA_Android_v0.3.0_GITHUB_READY_SOURCE.zip"
+            if [[ ! -f "$zip_file" ]]; then
+              echo "::error::Required v0.3.0 source archive not found: $zip_file"
               exit 1
             fi
             mkdir -p .ci-source
             unzip -oq "$zip_file" -d .ci-source
             if [[ -f ".ci-source/JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
               project_dir=".ci-source/JAL_SURAKSHA_Android"
-            else
+            elif [[ -f ".ci-source/app/build.gradle.kts" ]]; then
               project_dir=".ci-source"
+            else
+              echo "::error::Android project not found in source archive."
+              exit 1
             fi
           fi
           echo "project_dir=$project_dir" >> "$GITHUB_OUTPUT"
-
-      - name: Apply Compose UI test import fix
-        shell: bash
-        env:
-          PROJECT_DIR: ${{ steps.prepare.outputs.project_dir }}
-        run: |
-          set -euo pipefail
-          source_file=".github/ci-overrides/PumpPanelTest.kt"
-          target_file="$PROJECT_DIR/app/src/androidTest/java/com/jalsuraksha/app/PumpPanelTest.kt"
-          test -f "$source_file"
-          test -f "$PROJECT_DIR/app/build.gradle.kts"
-          mkdir -p "$(dirname "$target_file")"
-          cp "$source_file" "$target_file"
-          if grep -q '^import androidx.compose.ui.test.assertExists$' "$target_file"; then
-            echo "::error::Invalid Compose assertExists import remains in UI test source."
-            exit 1
-          fi
-          grep -q 'rule.onNodeWithText("Pump state unknown").assertExists()' "$target_file"
-          echo "Applied corrected PumpPanelTest.kt to $target_file"
+          echo "Using Android project: $project_dir"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -160,9 +153,10 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
 
       - name: Run instrumented UI tests
-        uses: ReactiveCircus/android-emulator-runner@v2
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
           api-level: 35
           target: aosp_atd
@@ -174,15 +168,101 @@ jobs:
           script: |
             set -euo pipefail
             echo "Gradle project directory: $PWD"
+            test -f settings.gradle.kts -o -f settings.gradle
             gradle --no-daemon --stacktrace connectedDebugAndroidTest
 
       - name: Upload instrumented test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-instrumented-test-reports
+          name: jal-suraksha-v0.3.0-ui-test-reports
           path: |
             ${{ steps.prepare.outputs.project_dir }}/app/build/reports/androidTests/
             ${{ steps.prepare.outputs.project_dir }}/app/build/outputs/androidTest-results/
           if-no-files-found: warn
           retention-days: 14
+
+  build-debug-apk:
+    name: Build installable Debug APK
+    needs:
+      - unit-lint-build
+      - compose-ui-tests
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Prepare Android project source
+        id: prepare
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f "tools/verify_test_inventory.py" && -f "app/build.gradle.kts" ]]; then
+            project_dir="."
+          elif [[ -f "JAL_SURAKSHA_Android/tools/verify_test_inventory.py" && -f "JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
+            project_dir="JAL_SURAKSHA_Android"
+          else
+            zip_file="JAL_SURAKSHA_Android_v0.3.0_GITHUB_READY_SOURCE.zip"
+            if [[ ! -f "$zip_file" ]]; then
+              echo "::error::Required v0.3.0 source archive not found: $zip_file"
+              exit 1
+            fi
+            mkdir -p .ci-source
+            unzip -oq "$zip_file" -d .ci-source
+            if [[ -f ".ci-source/JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
+              project_dir=".ci-source/JAL_SURAKSHA_Android"
+            elif [[ -f ".ci-source/app/build.gradle.kts" ]]; then
+              project_dir=".ci-source"
+            else
+              echo "::error::Android project not found in source archive."
+              exit 1
+            fi
+          fi
+          echo "project_dir=$project_dir" >> "$GITHUB_OUTPUT"
+          echo "Using Android project: $project_dir"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+          accept-android-sdk-licenses: true
+
+      - name: Install Android 35 platform and build tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Install Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+          validate-wrappers: false
+
+      - name: Build debug APK
+        working-directory: ${{ steps.prepare.outputs.project_dir }}
+        run: gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Verify APK and write checksum
+        working-directory: ${{ steps.prepare.outputs.project_dir }}
+        run: |
+          set -euo pipefail
+          apk="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$apk"
+          mkdir -p release-artifacts
+          cp "$apk" release-artifacts/JAL-SURAKSHA-v0.3.0-debug.apk
+          sha256sum release-artifacts/JAL-SURAKSHA-v0.3.0-debug.apk > release-artifacts/SHA256SUMS.txt
+          ls -lh release-artifacts/
+
+      - name: Upload installable Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: JAL-SURAKSHA-v0.3.0-debug-apk
+          path: ${{ steps.prepare.outputs.project_dir }}/release-artifacts/*
+          if-no-files-found: error
+          retention-days: 30
+          
