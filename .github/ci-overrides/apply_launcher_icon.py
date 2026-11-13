@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the JAL-SURAKSHA supplied artwork as an Android launcher icon."""
+"""Apply JAL-SURAKSHA launcher artwork without duplicate Android drawable names."""
 from pathlib import Path
 import shutil
 import sys
@@ -10,15 +10,28 @@ if len(sys.argv) != 2:
 project = Path(sys.argv[1]).resolve()
 app = project / "app"
 manifest = app / "src/main/AndroidManifest.xml"
-source_asset = Path(__file__).with_name("ic_launcher_art.webp")
+override_asset = Path(__file__).with_name("ic_launcher_art.webp")
 if not manifest.is_file():
     raise SystemExit(f"AndroidManifest.xml not found under {project}")
-if not source_asset.is_file():
-    raise SystemExit(f"Launcher artwork not found: {source_asset}")
 
 res = app / "src/main/res"
-(res / "drawable-nodpi").mkdir(parents=True, exist_ok=True)
-shutil.copy2(source_asset, res / "drawable-nodpi/ic_launcher_art.webp")
+drawable_dir = res / "drawable-nodpi"
+drawable_dir.mkdir(parents=True, exist_ok=True)
+png_resource = drawable_dir / "ic_launcher_art.png"
+webp_resource = drawable_dir / "ic_launcher_art.webp"
+
+# Preserve the higher-resolution PNG already bundled in v0.3.1 source.
+# Android resource merger treats PNG and WEBP with the same basename as duplicates.
+if png_resource.is_file():
+    webp_resource.unlink(missing_ok=True)
+    selected_resource = png_resource
+elif webp_resource.is_file():
+    selected_resource = webp_resource
+elif override_asset.is_file():
+    shutil.copy2(override_asset, webp_resource)
+    selected_resource = webp_resource
+else:
+    raise SystemExit("No launcher artwork found in project or CI overrides")
 
 (res / "values").mkdir(parents=True, exist_ok=True)
 (res / "values/colors.xml").write_text("""<?xml version=\"1.0\" encoding=\"utf-8\"?>
@@ -69,13 +82,14 @@ shutil.copy2(source_asset, res / "drawable-nodpi/ic_launcher_art.webp")
 (project / "docs").mkdir(parents=True, exist_ok=True)
 (project / "docs/APP_ICON.md").write_text("""# JAL-SURAKSHA App Icon
 
-The launcher icon uses the artwork supplied for JAL-SURAKSHA, inset on a navy canvas to reduce cropping by Android launcher masks.
+The launcher icon uses the supplied high-resolution artwork, inset on a navy canvas.
 
 - API 24-25: anydpi layer-list fallback.
 - API 26+: adaptive icon with navy background and supplied artwork foreground.
 - API 33+: monochrome layer for themed launcher icons.
 - Manifest launcher icon reference remains @mipmap/ic_launcher.
 
-This change only updates launcher icon resources; it does not change network, authentication, firmware, pump-control or safety behavior.
+Only one drawable resource with the logical name ic_launcher_art is retained to avoid Android resource-merger conflicts.
+This change does not alter network, authentication, firmware, pump-control or safety behavior.
 """, encoding="utf-8")
-print(f"Launcher icon applied to {project}")
+print(f"Launcher icon applied using {selected_resource.name}; duplicate same-name resources removed.")
