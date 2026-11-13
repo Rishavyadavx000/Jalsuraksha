@@ -68,6 +68,16 @@ jobs:
           echo "Applied PipelineStatusCard.kt to $target_file"
           python3 .github/ci-overrides/patch_status_http401.py "$PROJECT_DIR"
 
+      - name: Apply JAL-SURAKSHA launcher icon
+        shell: bash
+        env:
+          PROJECT_DIR: ${{ steps.prepare.outputs.project_dir }}
+        run: |
+          set -euo pipefail
+          python3 .github/ci-overrides/apply_launcher_icon.py "$PROJECT_DIR"
+          test -s "$PROJECT_DIR/app/src/main/res/drawable-nodpi/ic_launcher_art.webp"
+          grep -q '<monochrome' "$PROJECT_DIR/app/src/main/res/mipmap-anydpi-v33/ic_launcher.xml"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -167,6 +177,16 @@ jobs:
           grep -q 'internal fun PipelineStatusCard(ui: UiSnapshot)' "$target_file"
           echo "Applied PipelineStatusCard.kt to $target_file"
           python3 .github/ci-overrides/patch_status_http401.py "$PROJECT_DIR"
+
+      - name: Apply JAL-SURAKSHA launcher icon
+        shell: bash
+        env:
+          PROJECT_DIR: ${{ steps.prepare.outputs.project_dir }}
+        run: |
+          set -euo pipefail
+          python3 .github/ci-overrides/apply_launcher_icon.py "$PROJECT_DIR"
+          test -s "$PROJECT_DIR/app/src/main/res/drawable-nodpi/ic_launcher_art.webp"
+          grep -q '<monochrome' "$PROJECT_DIR/app/src/main/res/mipmap-anydpi-v33/ic_launcher.xml"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -269,6 +289,16 @@ jobs:
           grep -q 'internal fun PipelineStatusCard(ui: UiSnapshot)' "$target_file"
           echo "Applied PipelineStatusCard.kt to $target_file"
           python3 .github/ci-overrides/patch_status_http401.py "$PROJECT_DIR"
+
+      - name: Apply JAL-SURAKSHA launcher icon
+        shell: bash
+        env:
+          PROJECT_DIR: ${{ steps.prepare.outputs.project_dir }}
+        run: |
+          set -euo pipefail
+          python3 .github/ci-overrides/apply_launcher_icon.py "$PROJECT_DIR"
+          test -s "$PROJECT_DIR/app/src/main/res/drawable-nodpi/ic_launcher_art.webp"
+          grep -q '<monochrome' "$PROJECT_DIR/app/src/main/res/mipmap-anydpi-v33/ic_launcher.xml"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
