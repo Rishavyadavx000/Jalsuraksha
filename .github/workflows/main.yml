@@ -67,6 +67,7 @@ jobs:
           grep -q 'internal fun PipelineStatusCard(ui: UiSnapshot)' "$target_file"
           echo "Applied PipelineStatusCard.kt to $target_file"
           python3 .github/ci-overrides/patch_status_http401.py "$PROJECT_DIR"
+          python3 .github/ci-overrides/patch_basicauth_alerts.py "$PROJECT_DIR"
 
       - name: Apply JAL-SURAKSHA launcher icon
         shell: bash
@@ -182,6 +183,7 @@ jobs:
           grep -q 'internal fun PipelineStatusCard(ui: UiSnapshot)' "$target_file"
           echo "Applied PipelineStatusCard.kt to $target_file"
           python3 .github/ci-overrides/patch_status_http401.py "$PROJECT_DIR"
+          python3 .github/ci-overrides/patch_basicauth_alerts.py "$PROJECT_DIR"
 
       - name: Apply JAL-SURAKSHA launcher icon
         shell: bash
@@ -299,6 +301,7 @@ jobs:
           grep -q 'internal fun PipelineStatusCard(ui: UiSnapshot)' "$target_file"
           echo "Applied PipelineStatusCard.kt to $target_file"
           python3 .github/ci-overrides/patch_status_http401.py "$PROJECT_DIR"
+          python3 .github/ci-overrides/patch_basicauth_alerts.py "$PROJECT_DIR"
 
       - name: Apply JAL-SURAKSHA launcher icon
         shell: bash
