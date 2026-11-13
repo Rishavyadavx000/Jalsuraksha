@@ -30,9 +30,9 @@ jobs:
           elif [[ -f "JAL_SURAKSHA_Android/tools/verify_test_inventory.py" && -f "JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
             project_dir="JAL_SURAKSHA_Android"
           else
-            zip_file="JAL_SURAKSHA_Android_v0.3.0_GITHUB_READY_SOURCE.zip"
+            zip_file="JAL_SURAKSHA_Android_v0.3.1_GITHUB_READY_SOURCE.zip"
             if [[ ! -f "$zip_file" ]]; then
-              echo "::error::Required v0.3.0 source archive not found: $zip_file"
+              echo "::error::Required v0.3.1 source archive not found: $zip_file"
               ls -la
               exit 1
             fi
@@ -119,7 +119,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jal-suraksha-v0.3.0-unit-lint-reports
+          name: jal-suraksha-v0.3.1-unit-lint-reports
           path: |
             ${{ steps.prepare.outputs.project_dir }}/app/build/reports/
             ${{ steps.prepare.outputs.project_dir }}/app/build/test-results/
@@ -143,9 +143,9 @@ jobs:
           elif [[ -f "JAL_SURAKSHA_Android/tools/verify_test_inventory.py" && -f "JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
             project_dir="JAL_SURAKSHA_Android"
           else
-            zip_file="JAL_SURAKSHA_Android_v0.3.0_GITHUB_READY_SOURCE.zip"
+            zip_file="JAL_SURAKSHA_Android_v0.3.1_GITHUB_READY_SOURCE.zip"
             if [[ ! -f "$zip_file" ]]; then
-              echo "::error::Required v0.3.0 source archive not found: $zip_file"
+              echo "::error::Required v0.3.1 source archive not found: $zip_file"
               exit 1
             fi
             mkdir -p .ci-source
@@ -227,7 +227,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jal-suraksha-v0.3.0-ui-test-reports
+          name: jal-suraksha-v0.3.1-ui-test-reports
           path: |
             ${{ steps.prepare.outputs.project_dir }}/app/build/reports/androidTests/
             ${{ steps.prepare.outputs.project_dir }}/app/build/outputs/androidTest-results/
@@ -255,9 +255,9 @@ jobs:
           elif [[ -f "JAL_SURAKSHA_Android/tools/verify_test_inventory.py" && -f "JAL_SURAKSHA_Android/app/build.gradle.kts" ]]; then
             project_dir="JAL_SURAKSHA_Android"
           else
-            zip_file="JAL_SURAKSHA_Android_v0.3.0_GITHUB_READY_SOURCE.zip"
+            zip_file="JAL_SURAKSHA_Android_v0.3.1_GITHUB_READY_SOURCE.zip"
             if [[ ! -f "$zip_file" ]]; then
-              echo "::error::Required v0.3.0 source archive not found: $zip_file"
+              echo "::error::Required v0.3.1 source archive not found: $zip_file"
               exit 1
             fi
             mkdir -p .ci-source
@@ -332,14 +332,14 @@ jobs:
           apk="app/build/outputs/apk/debug/app-debug.apk"
           test -s "$apk"
           mkdir -p release-artifacts
-          cp "$apk" release-artifacts/JAL-SURAKSHA-v0.3.0-debug.apk
-          sha256sum release-artifacts/JAL-SURAKSHA-v0.3.0-debug.apk > release-artifacts/SHA256SUMS.txt
+          cp "$apk" release-artifacts/JAL-SURAKSHA-v0.3.1-debug.apk
+          sha256sum release-artifacts/JAL-SURAKSHA-v0.3.1-debug.apk > release-artifacts/SHA256SUMS.txt
           ls -lh release-artifacts/
 
       - name: Upload installable Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: JAL-SURAKSHA-v0.3.0-debug-apk
+          name: JAL-SURAKSHA-v0.3.1-debug-apk
           path: ${{ steps.prepare.outputs.project_dir }}/release-artifacts/*
           if-no-files-found: error
           retention-days: 30
